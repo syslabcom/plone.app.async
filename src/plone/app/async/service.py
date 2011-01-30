@@ -80,6 +80,13 @@ def job_failure_callback(result):
     notify(JobFailure(result))
 
 
+DEFERRED_JOB_KEY = 'asyncjob_begin_after'
+def get_begin_after(kwargs):
+    begin_after = kwargs.get(DEFERRED_JOB_KEY, None)
+    if DEFERRED_JOB_KEY in kwargs:
+        del kwargs[DEFERRED_JOB_KEY]
+    return begin_after
+
 class AsyncService(threading.local):
     """Utility providing async execution services to Plone.
     """
@@ -100,16 +107,22 @@ class AsyncService(threading.local):
         return self._conn.root()[KEY]
 
     def queueJobInQueue(self, queue, quota_names, func, context, *args, **kwargs):
-        """Queue a job in the specified queue."""
+        """Queue a job in the specified queue.
+        Looks into the kwargs for:
+            plone.app.async.service.DEFERRED_JOB_KEY
+        If it is present, use the value (datetime) to set
+        the 'begin_after' queue.put argument to defer the job start
+        """
         portal = getUtility(ISiteRoot)
         portal_path = portal.getPhysicalPath()
         context_path = context.getPhysicalPath()
         uf_path, user_id = _getAuthenticatedUser()
+        begin_after = get_begin_after(kwargs)
         job = Job(_executeAsUser, context_path, portal_path, uf_path, user_id,
                   func, *args, **kwargs)
         if quota_names:
             job.quota_names = quota_names
-        job = queue.put(job)
+        job = queue.put(job, begin_after = begin_after)
         job.addCallbacks(success=job_success_callback,
                          failure=job_failure_callback)
         return job
@@ -119,11 +132,28 @@ class AsyncService(threading.local):
         queue = self.getQueues()['']
         return self.queueJobInQueue(queue, ('default',), func, context, *args, **kwargs)
 
-    def _queueJobsInQueue(self, queue, quota_names, job_infos, serialize=True):
-        """Queue multiple jobs in the specified queue."""
+    def queueDeferredJob(self, func, begin_after, context, *args, **kwargs):
+        """Queue a deferred job  in the default queue."""
+        queue = self.getQueues()['']
+        kwargs[DEFERRED_JOB_KEY] = begin_after
+        return self.queueJobInQueue(queue, ('default',), func, context, *args, **kwargs)
+
+    def queueDeferredJobInQueue(self, queue, quota_names, func, begin_after, context, *args, **kwargs):
+        """Queue a deferred job in the specified queue."""
+        kwargs[DEFERRED_JOB_KEY] = begin_after
+        return self.queueJobInQueue(queue, ('default',), func, context, *args, **kwargs)
+
+    def _queueJobsInQueue(self, queue, quota_names, job_infos, serialize=True, **kwargs):
+        """Queue multiple jobs in the specified queue.
+        Looks into the kwargs for:
+            plone.app.async.service.DEFERRED_JOB_KEY
+        If it is present, use the value (datetime) to set
+        the 'begin_after' queue.put argument to defer the job start
+        """
         portal = getUtility(ISiteRoot)
         portal_path = portal.getPhysicalPath()
         uf_path, user_id = _getAuthenticatedUser()
+        begin_after = get_begin_after(kwargs)
         scheduled = []
         for (func, context, args, kwargs) in job_infos:
             context_path = context.getPhysicalPath()
@@ -136,18 +166,18 @@ class AsyncService(threading.local):
             job = parallel(*scheduled)
         if quota_names:
             job.quota_names = quota_names
-        job = queue.put(job)
+        job = queue.put(job, begin_after = begin_after)
         job.addCallbacks(success=job_success_callback,
                          failure=job_failure_callback)
         return job
 
-    def queueSerialJobsInQueue(self, queue, quota_names, *job_infos):
+    def queueSerialJobsInQueue(self, queue, quota_names, *job_infos, **kwargs):
         """Queue serial jobs in the specified queue."""
-        return self._queueJobsInQueue(queue, quota_names, job_infos, serialize=True)
+        return self._queueJobsInQueue(queue, quota_names, job_infos, serialize=True, **kwargs)
 
-    def queueParallelJobsInQueue(self, queue, quota_names, *job_infos):
+    def queueParallelJobsInQueue(self, queue, quota_names, *job_infos, **kwargs):
         """Queue parallel jobs in the specified queue."""
-        return self._queueJobsInQueue(queue, quota_names, job_infos, serialize=False)
+        return self._queueJobsInQueue(queue, quota_names, job_infos, serialize=False, **kwargs)
 
     def queueSerialJobs(self, *job_infos):
         """Queue serial jobs in the default queue."""
@@ -158,3 +188,27 @@ class AsyncService(threading.local):
         """Queue parallel jobs in the default queue."""
         queue = self.getQueues()['']
         return self.queueParallelJobsInQueue(queue, ('default',), *job_infos)
+
+    def queueDeferredSerialJobsInQueue(self, queue, quota_names, begin_after, *job_infos):
+        """Queue serial jobs in the specified queue."""
+        kwargs = {DEFERRED_JOB_KEY : begin_after}
+        return self._queueJobsInQueue(queue, quota_names, job_infos, serialize=True, **kwargs)
+
+    def queueDeferredParallelJobsInQueue(self, queue, quota_names, begin_after, *job_infos):
+        """Queue parallel jobs in the specified queue."""
+        kwargs = {DEFERRED_JOB_KEY : begin_after}
+        return self._queueJobsInQueue(queue, quota_names, job_infos, serialize=False, **kwargs)
+
+    def queueDeferredSerialJobs(self, begin_after, *job_infos):
+        """Queue serial jobs in the default queue."""
+        queue = self.getQueues()['']
+        kwargs = {DEFERRED_JOB_KEY : begin_after}
+        return self.queueSerialJobsInQueue(queue, ('default',), *job_infos, **kwargs)
+
+    def queueDeferredParallelJobs(self, begin_after, *job_infos):
+        """Queue parallel jobs in the default queue."""
+        queue = self.getQueues()['']
+        kwargs = {DEFERRED_JOB_KEY : begin_after}
+        return self.queueParallelJobsInQueue(queue, ('default',), *job_infos, **kwargs)
+
+

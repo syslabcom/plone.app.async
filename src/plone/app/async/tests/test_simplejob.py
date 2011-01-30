@@ -1,11 +1,14 @@
+import datetime
+import pytz  
 import transaction
 from zope.component import getUtility
-from zc.async.testing import wait_for_result
+from zc.async.testing import wait_for_result, set_now, setUpDatetime, tearDownDatetime
 from Products.PloneTestCase.PloneTestCase import default_user
 from Products.CMFCore.utils import getToolByName
 from plone.app.async.tests.base import AsyncTestCase
 from plone.app.async.interfaces import IAsyncService
 from plone.app.async.service import makeJob
+from plone.app.async.service import get_begin_after 
 
 
 def addNumbers(context, x1, x2):
@@ -183,7 +186,17 @@ class TestSimpleJob(AsyncTestCase):
         # not accessible by anon
         self.assertEqual(wait_for_result(job), 0)
 
-        
+    def test_getafter(self):
+        """test_getafter."""
+        data = {}
+        ba = get_begin_after(data)
+        self.assertEquals(ba, None)
+        self.assertEquals(data, {})
+        data = {'asyncjob_begin_after': 'foo'}
+        ba = get_begin_after(data)
+        self.assertEquals(ba, 'foo')
+        self.assertEquals(data, {}) 
+
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()

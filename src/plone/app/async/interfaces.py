@@ -34,17 +34,63 @@ class IAsyncService(interface.Interface):
         """
 
     def queueJobInQueue(queue, quota_names, func, context, *args, **kwargs):
-        """Queue a job in a specific queue."""
+        """Queue a job in a specific queue.
+        Looks into the kwargs for:
+            plone.app.async.service.DEFERRED_JOB_KEY
+        If it is present, use the value (datetime) to set
+        the 'begin_after' queue.put argument to defer the job start
+        """
 
-    def queueSerialJobsInQueue(queue, quota_names, *job_infos):
+    def queueSerialJobsInQueue(queue, quota_names, *job_infos, **kwargs):
         """Queue several jobs in a specific queue, to be run serially
 
         job_info is a tuple with (func, context, args, kwargs).
         """
 
-    def queueParallelJobsInQueue(queue, quota_names, *job_infos):
+    def queueParallelJobsInQueue(queue, quota_names, *job_infos, **kwargs):
         """Queue several jobs in a specific queue, to be run in parallel
 
+        job_info is a tuple with (func, context, args, kwargs).
+        """
+
+    def queueDeferredJob(func, begin_after, context, *args, **kwargs):
+        """Queue a job.
+        begin_after : datetime after which the job can be launched
+        """ 
+
+    def queueDeferredJobInQueue(queue, quota_names, func, begin_after, context, *args, **kwargs):
+        """Queue a job in a specific queue.
+        Looks into the kwargs for:
+            plone.app.async.service.DEFERRED_JOB_KEY
+        If it is present, use the value (datetime) to set
+        the 'begin_after' queue.put argument to defer the job start
+        """ 
+
+    def queueDeferredSerialJobsInQueue(queue, quota_names, begin_after, *job_infos):
+        """Queue several jobs in a specific queue, to be run serially
+
+        begin_after : datetime after which the job can be launched
+        job_info is a tuple with (func, context, args, kwargs).
+        """
+
+    def queueDeferredParallelJobsInQueue(queue, quota_names, begin_after, *job_infos):
+        """Queue several jobs in a specific queue, to be run in parallel
+
+        begin_after : datetime after which the job can be launched
+        job_info is a tuple with (func, context, args, kwargs).
+        """
+
+    def queueDeferredSerialJobs(begin_after, *job_infos):
+        """Queue several jobs, to be run serially
+
+        begin_after : datetime after which the job can be launched
+        job_info is a tuple with (func, context, args, kwargs).
+        """
+
+    def queueDeferredParallelJobs(begin_after, *job_infos):
+        """Queue several jobs, to be run in parallel
+
+        begin_after : datetime after which the job can be launched
         job_info is a tuple with (func, context, args, kwargs).
         """
 

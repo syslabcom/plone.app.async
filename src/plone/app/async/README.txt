@@ -79,7 +79,7 @@ Queue a job that creates a document and another that submits it:
 Because by default the jobs are executed with the default quota set to 1,
 (i.e. only one job can be executed at a time), jobs are executed serially and
 according to the order by which they were submitted. Hence, waiting for the
-job that submits the document implies that the one that created it has already 
+job that submits the document implies that the one that created it has already
 been carried out.
 
     >>> wait_for_result(job2)
@@ -107,6 +107,19 @@ of queueSerialJobs:
     'pending'
 
 If you want to execute jobs in parallel, you can use ``queueParallelJobs``.
+
+Deferring Jobs
+-----------------------
+You can defer Jobs by using one of those methods which reflect the AsyncService standard methods. But rather than executing the job on the fly, they defer the job for later execution.
+
+    * queueDeferredJob 
+    * queueDeferredSerialJobs
+    * queueDeferredParallelJobs
+    * queueDeferredJobInQueue
+    * queueDeferredSerialJobsInQueue
+    * queueDeferredParallelJobsInQueue
+
+You can refer to the ``plone.app.async.interfaces.IAsyncService`` interface for the exact signature of those, but basicly they take a ``begin_after`` (**datetime**) argument to specify the launch time.
 
 Security and user permissions
 -----------------------------
@@ -139,7 +152,7 @@ so by adding callbacks. For instance,
     >>> results
     ['Success: 42']
 
-Failures can be handled in the same way. 
+Failures can be handled in the same way.
 
     >>> results = []
     >>> def failingJob(context):
