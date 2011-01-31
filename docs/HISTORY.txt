@@ -3,6 +3,9 @@ Changelog
 
 1.1 - Unreleased
 ----------------
+- Add the possibility to defer jobs .
+  (Add 6 relevants methods on IAsyncService)
+  [kiorky] 
 
 
 1.0 - 2011-01-03
