@@ -48,6 +48,7 @@ def _executeAsUser(context_path, portal_path, uf_path, user_id, func, *args,
             if portal is None:
                 raise BadRequest(
                     'Portal path %s not found' % '/'.join(portal_path))
+            setattr(portal, 'REQUEST', None)
             setSite(portal)
 
             if uf_path:
