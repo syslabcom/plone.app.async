@@ -60,7 +60,9 @@ def _executeAsUser(context_path, portal_path, uf_path, user_id, func, *args,
                     raise BadRequest('User %s not found' % user_id)
                 newSecurityManager(None, user)
 
+            setattr(portal, 'REQUEST', None)
             context = portal.unrestrictedTraverse(context_path, None)
+            delattr(portal, 'REQUEST')
             if context is None:
                 raise BadRequest(
                     'Context path %s not found' % '/'.join(context_path))
